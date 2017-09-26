@@ -182,7 +182,7 @@ class Person(object):
         """
         self.partnerships.append(partnership)
         self.n_partners += 1
-        assert (self.n_partners == len(self.partnerships) == len(set(self.partners)))
+        assert (self.n_partners == len(self.partnerships) == len(set(self.partners))) 
         return
 
     def remove_partnership(self, partnership):
