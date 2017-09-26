@@ -1,8 +1,16 @@
 """
 Contains Scheduler and its helper routines
+
+ai:Add a comment stating where most of this code came from
+and what you modified.  Be as explicit as possible.
+(And btw, is there any reason not to import most of this?)
+
+jk: OK. Will edit and explain. 
+Importing: No reason. As discussed about Person class modifications, I should
+have imported more in general rather than modifying and adding to your original code. 
 """
 from collections import defaultdict
-#from constants import *
+from constants import *
 import logging
 from Infection import Partnership
 import numpy as np
@@ -57,6 +65,56 @@ def test_random_pair(male, female, draw, phi):
     return pairup
 
 
+# def record_output(males, females, params):
+#     """Return None. Write data to disk.
+#     :note: EHG store these values in arrays; we write them to disk instead
+#     :note: record same values (in same order) as EHG, then append additions
+#     """
+#     counters = params['counters']  # count transmissions by stage
+#     fout = params['fout']
+#     n_infected_males = sum(m.is_infected for m in males)
+#     n_infected_females = sum(f.is_infected for f in females)
+#     # build up this period's data as a list
+#     data = [n_infected_males, n_infected_females]
+#     data += [
+#         counters['malePrimaryTransToday'],
+#         counters['femalePrimaryTransToday'],
+#         counters['maleAsymptomaticTransToday'],
+#         counters['femaleAsymptomaticTransToday'],
+#         counters['maleSymptomaticTransToday'],
+#         counters['femaleSymptomaticTransToday'],
+#     ]
+#     maleDistPartnerships = np.bincount([male.n_partners for male in males])
+#     assert sum(maleDistPartnerships) == len(males)
+#     femaleDistPartnerships = np.bincount([female.n_partners for female in females])
+#     assert sum(femaleDistPartnerships) == len(females)
+#     if n_infected_males:
+#         maleDistHIVp = np.bincount([male.n_partners for male in males if male.is_infected])
+#     else:  # bincount balks at empty lists
+#         maleDistHIVp = [0] * nOutGroups
+#     if n_infected_females:
+#         femaleDistHIVp = np.bincount([female.n_partners for female in females if female.is_infected])
+#     else:
+#         femaleDistHIVp = [0] * nOutGroups
+#     # the following were provided as output arrays in the EHG code
+#     for dist in maleDistPartnerships, femaleDistPartnerships, maleDistHIVp, femaleDistHIVp:
+#         distlen = len(dist)
+#         data.extend(dist[:nOutGroups])
+#         if distlen < nOutGroups:
+#             data.extend([0] * (nOutGroups - distlen))
+#         elif distlen > nOutGroups:
+#             logging.warn('discarding high partnership counts')
+#     assert len(data) == 2 + 6 + 4 * nOutGroups
+#     assert all(isinstance(item, int) for item in data)
+#     # above shd match EHG's output; below are additions
+#     nMprimary = sum(1 for male in males if male.has_primary())
+#     nFprimary = sum(1 for female in females if female.has_primary())
+#     data += [nMprimary, nFprimary]
+#     # finally, write the data to file
+#     fout.write('\n')
+#     data = ','.join(str(d) for d in data)
+#     fout.write(data)
+
 
 def seed_infections(males, females, day, schedule, params):
     assert sum(f.is_infected for f in females) == 0
@@ -65,14 +123,8 @@ def seed_infections(males, females, day, schedule, params):
     Disease = params['Disease']
     nM = len(males)
     nF = len(females)
-    #nMaleSeed = int(round((nM // 100) * params['pSeedHIV'][0]))
-    #nFemaleSeed = int(round((nF // 100) * params['pSeedHIV'][1]))
-    assert type(params['pSeedHIV'][0]) is float
-    assert type(params['pSeedHIV'][1]) is float
-        
-    nMaleSeed = int(round(nM * params['pSeedHIV'][0]))
-    nFemaleSeed = int(round(nF * params['pSeedHIV'][1]))
-    
+    nMaleSeed = int(round((nM // 100) * params['pctHIVseed']))
+    nFemaleSeed = int(round((nF // 100) * params['pctHIVseed']))
     if not (nFemaleSeed < len(females) and nMaleSeed < len(males)):
         raise ValueError('choose smaller seeds')
     # why bother to randomize?? (but harmless, & matches EHG) chk
@@ -351,7 +403,7 @@ class Scheduler(object):
 #### add some helper functions
 
 
-def record_output(males, females, params,day,nOutGroups):
+def record_output(males, females, params,day):
     """Return None. Write data to disk.
     :note: EHG store these values in arrays; we write them to disk instead
     :note: record same values (in same order) as EHG, then append additions
