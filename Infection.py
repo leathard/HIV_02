@@ -36,20 +36,20 @@ class Infection(object):
             registry.register_infection(self)
 
     def stage(self, day):
-        """Define nem of the current infection stage. 
+        """Define name of the current infection stage. 
 
         There are four stages of HIV: primary, asymptomatic, symptomatic, and
         pre death/no transmission dying stage.
 
         Vars: 
-            day: 
+            day
 
         Returns: 
             name of current infection stage (str). 
         """
 
         assert self._host.is_infected
-        dur_p, dur_a, dur_s, dur_0 = self._durations # unused variable dur_0
+        dur_p, dur_a, dur_s, dur_0 = self._durations 
         days_infected = day - self.start_date
         if days_infected <= dur_p:  # primary infection
             stage = 'primary'
@@ -61,7 +61,7 @@ class Infection(object):
             stage = 'dying'
         return stage
 
-    def expose(self, partnership, day):  # called by Partnership::expose_transmission
+    def expose(self, partnership, day):  
         """Expose partnership to Infection and possibly schedule transmission
         event. 
 
@@ -77,8 +77,8 @@ class Infection(object):
         before this scheduled transmission happens.
 
         Vars:
-            partnership: 
-            day: 
+            partnership
+            day
 
         Returns: 
             None. 
@@ -103,9 +103,7 @@ class Infection(object):
             return
 
         stageEndDate = self.start_date  # initialize to date of infection
-        # ai: small change from EHG: loop over common code
-        # ai: primary, asymptomatic, symptomatic infection stage
-        schedule = self.registry  # can we most this out of here? chkchk
+        schedule = self.registry  
         for (dur_i, beta_i) in [(dur_p, beta_p), (dur_a, beta_a), (dur_s, beta_s), ]:
             stageEndDate += dur_i  # infection period (increment then compare)
             if eligDate < stageEndDate:
@@ -118,11 +116,10 @@ class Infection(object):
                         schedule.register_transmission(partnership)
                         logging.info('Infection.expose: Transmission scheduled')
                         return
-                eligDate = stageEndDate  # if beta_i=0 or candidate too far out
+                eligDate = stageEndDate 
             if eligDate >= partnership.end_date:
                 return
 
-            # ai: final days (could reuse the above code)
         stageEndDate += dur_0
         if eligDate < stageEndDate and beta_0 > 0:
             candidate = eligDate + partnership._prng.geometric(beta_0)
@@ -148,10 +145,10 @@ def stagedHIVfactory(durations, transM2F, transF2M):
     at runtime. 
 
     Vars: 
-        _durations:
-        trans_M2F:
-        trans_F2M:
-        is_fatal:
+        _durations
+        trans_M2F
+        trans_F2M
+        is_fatal
 
     Returns: 
         class for staged HIV infection. 
@@ -171,7 +168,7 @@ def stagedHIVfactory(durations, transM2F, transF2M):
     return HIV
 
 
-class Partnership(object): #too many instance attributes?
+class Partnership(object):
     """Provides a paired heterosexual "partnership" (i.e., sexual relationship).
     
     A Partnership has a predetermined random duration and schedules HIV transmission events.
@@ -207,21 +204,20 @@ class Partnership(object): #too many instance attributes?
         self.end_date = day + self.pshipduration(params)
         self.transmission_scheduled = False  # T/F whether HIV transmission is scheduled for the partnership
         self.transmission_date = None  # date for scheduled transmission
-        self.registry = registry  # can we get rid of this?
+        self.registry = registry  
         if registry is not None:
             registry.register_partnership(self)
         # add new partnership to each partner's partnership list
         male.add_partnership(self)
         female.add_partnership(self)
-        # expose partnership to infection transmission (if exactly one is infected)
         self.expose_transmission(day)
         logging.debug('EXIT: Partnership.__init__')
 
     def pshipduration(self, params):
-        """Add docstring
+        """Add partnership duration. 
 
         Vars: 
-            params: 
+            params:
         """
 
         self._prng = prng = params['prng']
@@ -229,7 +225,9 @@ class Partnership(object): #too many instance attributes?
         return prng.geometric(params['sigma01'])  # add partnership duration (min of 1)
 
     def set_tag(self, params):
-        """Add docstring
+        """Set primary or secondary partnership tag. Assign relative frequency
+        for secondary partners by changing sexfreq parameter. The default
+        relative frequency for secondary partnerships is 1. 
 
         Vars: 
             params:
@@ -238,11 +236,10 @@ class Partnership(object): #too many instance attributes?
         has_primary = any(p.tag == 'primary' for p in male.partnerships + female.partnerships)
         if has_primary:
             self.tag = 'secondary'
-            # set the relative frequency for non 'primary' partners (default is 1)
             self.sexfreq = params.get('secondarySexfreq', 1)
         else:
             self.tag = 'primary'
-            self.sexfreq = 1  # primary partnership normal frequency
+            self.sexfreq = 1
 
     def expose_transmission(self, day):
         """Expose and possibly schedule partnership for transmission event.
@@ -250,7 +247,7 @@ class Partnership(object): #too many instance attributes?
         checked for HIV exposure.
         
         :comment:
-            We only schedule a transmission if exactly one of the two is infected,
+            Transmission is scheduled if exactly one of the two is infected,
             but with concurrency another partner might still infect the uninfected partner
             before this scheduled transmission happens.
 

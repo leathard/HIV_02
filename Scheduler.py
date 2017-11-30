@@ -1,13 +1,9 @@
 """
-Contains Scheduler and its helper routines
+Contains Scheduler and its helper routines.
 
-ai:Add a comment stating where most of this code came from
-and what you modified.  Be as explicit as possible.
-(And btw, is there any reason not to import most of this?)
+Most of the code is by Alan G. Isaac. In Sim.py. 
+Modified treatment and tracking of agents. 
 
-jk: OK. Will edit and explain. 
-Importing: No reason. As discussed about Person class modifications, I should
-have imported more in general rather than modifying and adding to your original code. 
 """
 from collections import defaultdict
 from constants import *
@@ -65,56 +61,6 @@ def test_random_pair(male, female, draw, phi):
     return pairup
 
 
-# def record_output(males, females, params):
-#     """Return None. Write data to disk.
-#     :note: EHG store these values in arrays; we write them to disk instead
-#     :note: record same values (in same order) as EHG, then append additions
-#     """
-#     counters = params['counters']  # count transmissions by stage
-#     fout = params['fout']
-#     n_infected_males = sum(m.is_infected for m in males)
-#     n_infected_females = sum(f.is_infected for f in females)
-#     # build up this period's data as a list
-#     data = [n_infected_males, n_infected_females]
-#     data += [
-#         counters['malePrimaryTransToday'],
-#         counters['femalePrimaryTransToday'],
-#         counters['maleAsymptomaticTransToday'],
-#         counters['femaleAsymptomaticTransToday'],
-#         counters['maleSymptomaticTransToday'],
-#         counters['femaleSymptomaticTransToday'],
-#     ]
-#     maleDistPartnerships = np.bincount([male.n_partners for male in males])
-#     assert sum(maleDistPartnerships) == len(males)
-#     femaleDistPartnerships = np.bincount([female.n_partners for female in females])
-#     assert sum(femaleDistPartnerships) == len(females)
-#     if n_infected_males:
-#         maleDistHIVp = np.bincount([male.n_partners for male in males if male.is_infected])
-#     else:  # bincount balks at empty lists
-#         maleDistHIVp = [0] * nOutGroups
-#     if n_infected_females:
-#         femaleDistHIVp = np.bincount([female.n_partners for female in females if female.is_infected])
-#     else:
-#         femaleDistHIVp = [0] * nOutGroups
-#     # the following were provided as output arrays in the EHG code
-#     for dist in maleDistPartnerships, femaleDistPartnerships, maleDistHIVp, femaleDistHIVp:
-#         distlen = len(dist)
-#         data.extend(dist[:nOutGroups])
-#         if distlen < nOutGroups:
-#             data.extend([0] * (nOutGroups - distlen))
-#         elif distlen > nOutGroups:
-#             logging.warn('discarding high partnership counts')
-#     assert len(data) == 2 + 6 + 4 * nOutGroups
-#     assert all(isinstance(item, int) for item in data)
-#     # above shd match EHG's output; below are additions
-#     nMprimary = sum(1 for male in males if male.has_primary())
-#     nFprimary = sum(1 for female in females if female.has_primary())
-#     data += [nMprimary, nFprimary]
-#     # finally, write the data to file
-#     fout.write('\n')
-#     data = ','.join(str(d) for d in data)
-#     fout.write(data)
-
 
 def seed_infections(males, females, day, schedule, params):
     assert sum(f.is_infected for f in females) == 0
@@ -127,9 +73,8 @@ def seed_infections(males, females, day, schedule, params):
     nFemaleSeed = int(round((nF // 100) * params['pctHIVseed']))
     if not (nFemaleSeed < len(females) and nMaleSeed < len(males)):
         raise ValueError('choose smaller seeds')
-    # why bother to randomize?? (but harmless, & matches EHG) chk
     _prng = params['prng']
-    idxF = _prng.permutation(nF)[:nFemaleSeed]  # chkchk just use sample
+    idxF = _prng.permutation(nF)[:nFemaleSeed]  
     idxM = _prng.permutation(nM)[:nMaleSeed]
     diseases = list()
 
@@ -144,10 +89,12 @@ def seed_infections(males, females, day, schedule, params):
 
 
 def tally_transmission(day, transmitter, counters):
-    """Return None; tally the transmission.
+    """Tally the transmission (HIV stage for output).
+
+    Returns: None.
+
     :note: EHG increment these in partnership.py; we do this instead
     """
-    # get the stage of the transmitting partner and tally the stage for output
     stage = transmitter.get_HIV_stage(day)
     if transmitter.sex == 'M':
         if (stage == 'primary'):
@@ -166,6 +113,67 @@ def tally_transmission(day, transmitter, counters):
     else:
         raise ValueError('Unknown sex: ' + str(transmitter.sex))
 
+def start_treatment(males, females, day, params):
+    """Randomly pick agents and assign treatment.
+
+    note: treated agents scheduled to die are not automatically replaced by
+    another treated agent. 
+    """
+    p_nM_ART = params.get('p_nM_ART', 0.0)
+    p_nF_ART = params.get('p_nF_ART', 0.0)
+    p_PREP = params.get('p_PREP', 0.0)
+    nF_ART = sum(1 for female in females if female.ART)
+    nM_ART = sum(1 for male in males if male.ART)
+    nART = nF_ART + nM_ART
+    nF_PREP = sum(1 for female in females if female.PREP)
+    nM_PREP = sum(1 for male in males if male.PREP)
+    nPREP = nF_PREP + nM_PREP
+
+    newARTm = int(round(p_nM_ART * len(males) - nM_ART))
+    newARTf=int(round(p_nF_ART * len(females) - nF_ART))
+    if newARTm > 0:
+        nARTm = [idx for idx in range(len(males)) if males[idx].is_infected and not males[idx].ART and not males[idx].PrEP]
+        #print(day)
+        #print(len(nAM))
+        #print(sART_M)
+        if len(nAm)>0:
+            sARTm = np.random.choice(min(len(nARTm),newARTm)) + 1 
+            sARTmi = np.random.choice(nAm, sARTm, replace = False) 
+            #start treatment
+            for idx in sARTmi:
+                males[idx].ART = True
+                males[idx._Disease] = params['DiseaseART']
+
+    if newARTf > 0:
+        nAf = [idx for idx in range(len(females)) if females[idx].is_infected and not females[idx].ART and not females[idx].PrEP]
+        if len(nAf)>0:
+            sARTf = np.random.choice(min(len(nARTf),newARTf))+1
+            sARTfi = np.random.choice(nAf, sARTf, replace = False)
+            #start treatment 
+            for idx in sARTfi: 
+                females[idx].ART = True
+                females[idx]._Disease = params['DiseaseART']
+
+    newPREP = int(round((p_PREP * (len(males) + len(females)) - nPREP)/2))
+    if newPREP > 0:
+        nPREPm = [idx for idx in range(len(males)) if not males[idx].is_infected
+                and not males[idx].ART and not males[idx].PREP]
+        sPREPm= np.random.choice(newPREP) + 1
+        if len(nPREPm)>0:
+            sPREPmi = np.random.choice(nPREPm, sPREPm, replace = False)
+            for idx in sPREPmi:
+                males[idz].PREP = True
+                males[idx]._Disease = params['DiseasePREP']
+
+            nPREPf = [idx for idx in range(len(females)) if not
+                    females[idx].is_infected and not females[idz].ART and not
+                    females[idx].PREP]
+            sPREPf = np.random.choice(newPREP) + 1
+            sPREPfi = np.random.choice(nPREPf, sPREPf, replace = False)
+            for idx in sPREPfi: 
+                females[idx].PREP = True
+                females[idx]._Disease = params['DiseasePREP']
+
 
 class Scheduler(object):
     """Provides a schedular object that
@@ -174,7 +182,6 @@ class Scheduler(object):
     """
 
     def __init__(self, params):
-        # TODO: change to weakrefs
         self.params = params
         self.deaths = defaultdict(list)  # multimap for scheduling deaths: map date -> list of Person
         self.cures = defaultdict(list)  # multimap for scheduling cures: map date -> list of Person
@@ -197,7 +204,7 @@ class Scheduler(object):
         self.form_partnerships(males, females, day)
         self.hiv_transmissions(day)
         self.dissolve_partnerships(day)
-        self.hiv_deaths(day)
+        self.hiv_deaths(params, day)
 
     def register_person(self, person):
         if person.sex == 'M':
@@ -397,6 +404,7 @@ class Scheduler(object):
             self.delete_partnership(pship)
         assert len(indiv.partnerships) == 0
         indiv.reset()  # reborn anew, uninfected, same sex
+        indiv.reset_treatment(params) #reborn not readily treated
         logging.info('EXIT: kill indiv')
 
 

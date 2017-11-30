@@ -84,7 +84,6 @@ def buildPopulation(params):
     p_miners = params.get('p_miners',0.0)
     p_PREP = params.get('p_PREP',0.0)
     beta_PREP = params.get("beta_PREP",(0.,0.,0.,0.))
-    # note: don't add factory to model_params as it won't pickle -> MP problems
     params['Disease'] = stagedHIVfactory(durations=params['durationsHIV'],
                                          transM2F=params['beta_M2F'],
                                          transF2M=params['beta_F2M'],
@@ -92,35 +91,25 @@ def buildPopulation(params):
 
     params['sim_phi'] = lambda male, female: params['model_phi'](male, female, params['sim_epsilon'])
     params['counters'] = counters = defaultdict(int)
-    prep_params = params.copy()
-    prep_params["Disease"] = stagedHIVfactory(durations=params['durationsHIV'],
+    params["DiseasePREP"] = stagedHIVfactory(durations=params['durationsHIV'],
                                               transM2F=beta_PREP,
                                               transF2M=beta_PREP,
                                               )
-    params_ART = params.copy()
-    params_ART["Disease"] = stagedHIVfactory(durations=params['durationsHIV'],
+    params["DiseaseART"] = stagedHIVfactory(durations=params['durationsHIV'],
                                              transM2F=params['beta_M2F_ART'] if p_nM_ART>0 else (0.,0.,0.,0.),
                                              transF2M=params['beta_F2M_ART'] if p_nF_ART>0 else (0.,0.,0.,0.)
                                              )
     
-    mPopComb = [('Person', {'sex': 'M', 'registry': None, 'params': params}, {'fraction': 1 - p_PREP - p_miners - p_nM_ART - p_nclients})]
+    mPopComb = [('Person', {'sex': 'M', 'registry': None, 'params': params}, {'fraction': 1 - p_miners - p_nclients})]
     if p_nclients>0:
         mPopComb +=[('PersonCSWclient',{'sex':'M', 'registry': None, 'params':params},{'fraction':p_nclients})]
-    if p_nM_ART>0:
-        mPopComb +=[('PersonART', {'sex': 'M', 'registry': None, 'params': params_ART}, {'fraction': p_nM_ART})]
-    if p_PREP>0:
-        mPopComb +=[('PersonPREP', {'sex': 'M', 'registry': None, 'params': prep_params}, {'fraction': p_PREP})]
     if p_miners>0:
         mPopComb +=[('PersonMiner', {'sex': 'M', 'registry': None, 'params': params}, {'fraction': p_miners})]
-    
-    fPopComb = [('Person', {'sex': 'F', 'registry': None, 'params': params}, {'fraction': 1 - p_nF_ART - p_nsexworkers - p_PREP})]
-    if p_nF_ART>0:
-        fPopComb +=[('PersonART', {'sex': 'F', 'registry': None, 'params': params_ART}, {'fraction': p_nF_ART})]
+
+    fPopComb = [('Person', {'sex': 'F', 'registry': None, 'params': params}, {'fraction': 1 - p_nsexworkers})]
     if p_nsexworkers>0:
         fPopComb +=[('PersonCSW', {'sex': 'F', 'registry': None, 'params': params}, {'fraction': p_nsexworkers})]
-    if p_PREP>0:
-        fPopComb +=[('PersonPREP', {'sex': 'F', 'registry': None, 'params': prep_params}, {'fraction': p_PREP})]
-    import copy
+
     males = typesCombinations(copy.deepcopy(mPopComb), nM)
     females = typesCombinations(copy.deepcopy(fPopComb), nF)
     return males,females
@@ -206,19 +195,19 @@ def onesim(params):
             logging.info('\nBEGIN ITERATION for day {0}.'.format(day))
             logging.debug(schedule.show_one_day(day))
 
-            seed_infections_after_burn_days_passed(day, burn_days, deathday,
-                    schedule, params)
+           # seed_infections_after_burn_days_passed(day, burn_days, deathday,
+           #         schedule, params)
 
-            """# Seed infections after burn_days have passed (ONCE)
+            # Seed infections after burn_days have passed (ONCE)
             if (day == burn_days):
                 assert schedule.count_scheduled_deaths() == 0
                 diseases = seed_infections(males, females, day, schedule=schedule, params=params)
                 assert schedule.count_scheduled_deaths() == len(diseases)  # for now only have fatal disease
                 assert all(deathday >= day for deathday in schedule.deaths)  # equal only possible on day==burn_days
-            """
+            
+            start_treatment(males, females, day, params) #administer treatment
 
-            """Run the core of the simulation (runs even during burn days)
-            parms holds counters and fout
+            """Run the core of the simulation (runs even during burn days).
             """
             schedule.coresim(
                 males=males,
@@ -240,14 +229,17 @@ def onesim(params):
                 counters.clear()
 
             gc.collect()
-        """END of simulation; just need to clean up: reset static elements
-        prepare classes for reuse"""
-        schedule.clear_partnerships()  # clears the `partnerships` and `transmissions` multimaps
+
+        """END of simulation. 
+        Clean up: reset static elements.
+        Prepare classes for reuse. 
+        Clear partnerships and transmissions multimaps.
+        """
+        schedule.clear_partnerships()  
         schedule.deaths.clear()
 
         tempfh.close()
         dt = time.time() - t0
-        # since the simulation ran to completion, we can use the output file
         outfilename = params['outfilename']
         shutil.move(tempfname, outfilename)
         msg = """
@@ -258,4 +250,5 @@ def onesim(params):
     except KeyboardInterrupt:
         logging.exception("Interrupted")
         sys.exit(0)
+        raise
 

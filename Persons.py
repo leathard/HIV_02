@@ -26,72 +26,85 @@ class Persons(concurrency.Person):
     params: 
     """
 
-    def __init__(self, ptype, params, person):
-        """Return initialized Person.
-        """
-        concurrency.Person.__init__(self, sex, registry, params)        
-        #self._sex = person._sex 
-        #self._prng = person._prng
-        self.comsex = person.comsex 
-        #self._type = ptype
-        #self._Disease = params['Disease']
-        self.ART = False
-        self.PrEP = False
+    def __init__(self, sex, comsex, treatment, work, registry, params):
+        concurrency.Person.__init__(self, sex, registry, params)
+        self.comsex = comsex 
+        self.comsex = person.comsex
+        self._work = work
+        self.treatment = treatment
+        #self.ART = False
+        #self.PrEP = False
         self.sexfreq = 1 
         #self.params = params 
-        self.activeRange = (0, 365)
-        if ptype == 'PersonCSW':
+        self.activeRange = (0, 365) #jk: just for convenience
+        if work == 'CSW':
             self.comsex = True
             if self._sex=='F':
-                self.sexfreq = 5 
-        if ptype == 'PersonART':
-            self.ART = True 
-        if ptype == 'PersonMiner':
+                self.sexfreq = 5  
+        if work == 'Miner':
             self.activeRange = (0,200)
             self.sexfreq = 3
-        if ptype == 'PersonPREP':
-            self.PrEP = True
-        #self.n_partners = person.n_partners
-        #self.partnerships = person.partnerships
-        #self.is_infected = person.is_infected
-        #self.disease = person.disease
-        #self.iDOD= person.iDOD
+        self.n_partners = person.n_partners #0
+        self.partnerships = person.partnerships
+        self.is_infected = person.is_infected 
+        self.disease = person.disease 
+        self.iDOD = person.iDOD 
 
-    def infect(self, day, registry): 
-        """Return Disease instance,
-        infect an individual with HIV, schedule death, and expose other partners to transmission 
-        """
-        logging.debug('ENTER: Person.infect')
-        self.is_infected = True
-        disease = self.disease = self.Disease(self, day, registry=registry)
-        for pship in self.partnerships:
-            pship.expose_transmission(day)
-        logging.debug('EXIT: Person.infect')
-        return disease
+    def reset_treatment(self, params):
+        """Prepare Person instance for reuse after death
 
-    def HIVSeedInfect(self, day, registry):  #compare EHG's HIVSeedInfect in person.cpp - tr: Disease,  removed
-        """Return None.  seed infection
-        :comment: There is a low probably of an offset of 0,
-            which would mean the day of death is the day seeded.
-            This is to match EHG and is only mildly annoying.
+        Returns: None.
         """
-        logging.debug('ENTER: Person.HIVSeedInfect')
-        self.is_infected = True
-        duration = self.Disease._duration   
-        offset = self._prng.randint(0, duration)  
-        doi = day - (duration - offset)
-        disease = self.disease = self.Disease(self, doi, registry)  
-        for pship in self.partnerships:
-            pship.expose_transmission(day)
-        logging.debug('EXIT: Person.HIVSeedInfect')
-        return disease
+        self.ART = False
+        self.PREP = False 
+        self._Disease = params['Disease']
+
+
+ #   def infect(self, day, registry): 
+ #       """Return Disease instance,
+ #       infect an individual with HIV, schedule death, and expose other partners to transmission 
+ #       """
+ #       logging.debug('ENTER: Person.infect')
+ #       self.is_infected = True
+ #       disease = self.disease = self.Disease(self, day, registry=registry)
+ #       for pship in self.partnerships:
+ #           pship.expose_transmission(day)
+ #       logging.debug('EXIT: Person.infect')
+ #       return disease
+
+ #   def HIVSeedInfect(self, day, registry):  
+ #       """Return None.  seed infection
+ #       :comment: There is a low probably of an offset of 0,
+ #           which would mean the day of death is the day seeded.
+ #           This is to match EHG and is only mildly annoying.
+ #       """
+ #       logging.debug('ENTER: Person.HIVSeedInfect')
+ #       self.is_infected = True
+ #       duration = self.Disease._duration   
+ #       offset = self._prng.randint(0, duration)  
+ #       doi = day - (duration - offset)
+ #       disease = self.disease = self.Disease(self, doi, registry)  
+ #       for pship in self.partnerships:
+ #           pship.expose_transmission(day)
+ #       logging.debug('EXIT: Person.HIVSeedInfect')
+ #       return disease
+
+
+    @property 
+    def ART(self):
+        return 1 == self.treatment 
+
+    @property 
+    def PREP(self):
+        return 2 == self.treatment 
+
+    @property   
+    def Disease(self):
+        return self._Disease 
 
     def is_available(self, yearDay=None):
         return yearDay >= self.activeRange[0] and yearDay < self.activeRange[-1]
 
-    @property
-    def Disease(self):
-        return self._Disease 
 
 def typesCombinations(origAttrsSet, numbIndividuals):
     """
